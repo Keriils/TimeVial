@@ -36,5 +36,5 @@
 dependencies {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.5.4-GTNH:dev")
     compileOnly ("org.jetbrains:annotations:24.1.0")
-    compileOnly files("libs/ForgeNBTEdit.jar")
+    runtimeOnly files("libs/ForgeNBTEdit.jar")
 }

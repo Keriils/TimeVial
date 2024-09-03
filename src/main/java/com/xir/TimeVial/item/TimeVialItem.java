@@ -74,16 +74,15 @@ public class TimeVialItem extends Item {
             double targetPosY = y + 0.5D;
             double targetPosZ = z + 0.5D;
 
-            // 碰撞箱的最小坐标
+            // 计算碰撞箱大小
             double minX = targetPosX - tHalfSize;
             double minY = targetPosY - tHalfSize;
             double minZ = targetPosZ - tHalfSize;
-
-            // 碰撞箱的最大坐标
             double maxX = targetPosX + tHalfSize;
             double maxY = targetPosY + tHalfSize;
             double maxZ = targetPosZ + tHalfSize;
 
+            // 获取碰撞箱对应实体
             Optional<EntityTimeAccelerator> box = world
                 .getEntitiesWithinAABB(
                     EntityTimeAccelerator.class,
@@ -92,41 +91,43 @@ public class TimeVialItem extends Item {
                 .findFirst();
 
             if (box.isPresent()) {
+
                 EntityTimeAccelerator eta = box.get();
+
                 int currentRate = eta.getTimeRate();
                 int nextRateTimeRequired = currentRate * eta.getRemainingTime(); // no why
-                if (enableLogInfo) LOG.info("xxxxx {} xxxxx", nextRateTimeRequired);
+
                 if (currentRate < MAX_ACCELERATION && shouldAndConsumeTimeData(player, stack, nextRateTimeRequired)) {
                     eta.setTimeRate(currentRate * 2);
-                    int i = (int) (Math.log(currentRate) / Math.log(2)) - (enableTimeAcceleratorBoost ? 2 : 1);
-                    world.playSoundEffect(
-                        targetPosX,
-                        targetPosY,
-                        targetPosZ,
-                        "note.harp",
-                        defaultTimeVialVolumeValue,
-                        SOUND_ARRAY_F[i]);
+                    playSoundForRateChange(world, targetPosX, targetPosY, targetPosZ, eta.getTimeRate());
                 }
+
+                if (enableLogInfo) LOG.info("xxxxx {} xxxxx", nextRateTimeRequired);
+
             } else if (shouldAndConsumeTimeData(player, stack, TIME_INIT_RATE * 600)) {
+
                 EntityTimeAccelerator eta = new EntityTimeAccelerator(world, x, y, z);
-                eta.setPosition(targetPosX, targetPosY, targetPosZ);
+
                 world.spawnEntityInWorld(eta);
+
+                playSoundForRateChange(world, targetPosX, targetPosY, targetPosZ, eta.getTimeRate());
+
                 if (enableLogInfo) LOG.info(
                     "An entity entityTimeAccelerator has been spawned ({}, {}, {}).",
                     targetPosX,
                     targetPosY,
                     targetPosZ);
-                world.playSoundEffect(
-                    targetPosX,
-                    targetPosY,
-                    targetPosZ,
-                    "note.harp",
-                    defaultTimeVialVolumeValue,
-                    SOUND_ARRAY_F[0]);
             }
             return true;
         }
         return false;
+    }
+
+    private void playSoundForRateChange(@NotNull World world, double posX, double posY, double posZ, int currentRate) {
+        int i = (int) (Math.log(currentRate) / Math.log(2)) - (enableTimeAcceleratorBoost ? 3 : 2);
+        // security considerations
+        if (i < 0 || i >= SOUND_ARRAY_F.length) i = 0;
+        world.playSoundEffect(posX, posY, posZ, "note.harp", defaultTimeVialVolumeValue, SOUND_ARRAY_F[i]);
     }
 
     protected boolean shouldAndConsumeTimeData(@NotNull EntityPlayer player, @NotNull ItemStack stack,

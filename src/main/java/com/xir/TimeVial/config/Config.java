@@ -7,7 +7,7 @@ import net.minecraftforge.common.config.Configuration;
 public class Config {
 
     public static boolean enableBlockMode = true;
-    public static int accelerateBlockInterval = 10;
+    public static int accelerateBlockInterval = 2;
     public static boolean enableLogInfo = false;
     public static boolean limitOneTimeVial = true;
     public static float defaultTimeVialVolumeValue = 0.5F;
