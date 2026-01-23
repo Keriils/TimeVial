@@ -7,11 +7,11 @@ import static com.xir.TimeVial.config.Config.limitOneTimeVial;
 import static com.xir.TimeVial.main.TimeVial.LOG;
 
 import java.util.List;
-import java.util.Optional;
 
 import net.minecraft.client.resources.I18n;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -23,10 +23,15 @@ import org.jetbrains.annotations.NotNull;
 
 import com.xir.TimeVial.entity.EntityTimeAccelerator;
 
+import baubles.api.BaubleType;
+import baubles.api.IBauble;
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.Optional;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
-public class TimeVialItem extends Item {
+@Optional.Interface(iface = "baubles.api.IBauble", modid = "Baubles")
+public class TimeVialItem extends Item implements IBauble {
 
     public static final Item timeVialInstance = new TimeVialItem();
 
@@ -83,16 +88,20 @@ public class TimeVialItem extends Item {
             double maxZ = targetPosZ + tHalfSize;
 
             // 获取碰撞箱对应实体
-            Optional<EntityTimeAccelerator> box = world
-                .getEntitiesWithinAABB(
-                    EntityTimeAccelerator.class,
-                    AxisAlignedBB.getBoundingBox(minX, minY, minZ, maxX, maxY, maxZ))
-                .stream()
-                .findFirst();
+            // Optional<EntityTimeAccelerator> box = world
+            // .getEntitiesWithinAABB(
+            // EntityTimeAccelerator.class,
+            // AxisAlignedBB.getBoundingBox(minX, minY, minZ, maxX, maxY, maxZ))
+            // .stream()
+            // .findFirst();
 
-            if (box.isPresent()) {
+            var list = world.getEntitiesWithinAABB(
+                EntityTimeAccelerator.class,
+                AxisAlignedBB.getBoundingBox(minX, minY, minZ, maxX, maxY, maxZ));
 
-                EntityTimeAccelerator eta = box.get();
+            if (!list.isEmpty() && list.get(0) != null) {
+
+                EntityTimeAccelerator eta = list.get(0);
 
                 int currentRate = eta.getTimeRate();
                 int nextRateTimeRequired = currentRate * eta.getRemainingTime(); // no why
@@ -112,7 +121,9 @@ public class TimeVialItem extends Item {
 
                 playSoundForRateChange(world, targetPosX, targetPosY, targetPosZ, eta.getTimeRate());
 
-                if (enableLogInfo) LOG.info(
+                if (
+                    enableLogInfo
+                ) LOG.info(
                     "An entity entityTimeAccelerator has been spawned ({}, {}, {}).",
                     targetPosX,
                     targetPosY,
@@ -145,16 +156,25 @@ public class TimeVialItem extends Item {
 
     @Override
     public void onUpdate(ItemStack stack, World worldIn, Entity playerIn, int slot, boolean isHeld) {
-        if (!(playerIn instanceof EntityPlayer player)) return;
-        if (limitOneTimeVial && worldIn.getTotalWorldTime() % 600 == 0) {
+        if (playerIn instanceof EntityPlayer player) {
+            updateVialTick(player, stack);
+        }
+    }
+
+    protected void updateVialTick(EntityPlayer player, ItemStack stack) {
+        if (isClientSide()) return;
+        var world = player.worldObj;
+
+        if (limitOneTimeVial && world.getTotalWorldTime() % 600 == 0) {
             mergeSameVialTime(player, stack);
         }
+
         NBTTagCompound nbtTagCompound = stack.getTagCompound();
         if (nbtTagCompound == null) {
             nbtTagCompound = new NBTTagCompound();
             nbtTagCompound.setInteger("storedTimeTick", storedTimeTick);
             stack.setTagCompound(nbtTagCompound);
-        } else if (worldIn.getTotalWorldTime() % 20 == 0) {
+        } else if (world.getTotalWorldTime() % 20 == 0) {
             int t = nbtTagCompound.getInteger("storedTimeTick");
             if (t == NUMBER_EER) return;
             nbtTagCompound.setInteger("storedTimeTick", t + 20);
@@ -177,5 +197,46 @@ public class TimeVialItem extends Item {
                 }
             }
         }
+    }
+
+    static boolean isClientSide() {
+        return FMLCommonHandler.instance()
+            .getEffectiveSide() == Side.CLIENT;
+    }
+
+    @Override
+    @Optional.Method(modid = "Baubles")
+    public BaubleType getBaubleType(ItemStack itemstack) {
+        return BaubleType.UNIVERSAL;
+    }
+
+    @Override
+    @Optional.Method(modid = "Baubles")
+    public void onWornTick(ItemStack stack, EntityLivingBase player) {
+        updateVialTick((EntityPlayer) player, stack);
+    }
+
+    @Override
+    @Optional.Method(modid = "Baubles")
+    public void onEquipped(ItemStack itemstack, EntityLivingBase player) {
+
+    }
+
+    @Override
+    @Optional.Method(modid = "Baubles")
+    public void onUnequipped(ItemStack itemstack, EntityLivingBase player) {
+
+    }
+
+    @Override
+    @Optional.Method(modid = "Baubles")
+    public boolean canEquip(ItemStack itemstack, EntityLivingBase player) {
+        return true;
+    }
+
+    @Override
+    @Optional.Method(modid = "Baubles")
+    public boolean canUnequip(ItemStack itemstack, EntityLivingBase player) {
+        return true;
     }
 }
